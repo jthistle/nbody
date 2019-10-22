@@ -18,7 +18,7 @@ Alternatively, to prevent a body from moving when the mouse button is released, 
 
 To pan the camera, use WASD.
 
-[TODO] You cannot zoom the camera at the moment.
+To zoom the camera, scroll when not holding the mouse button.
 
 ### Time scale
 
