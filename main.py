@@ -223,14 +223,20 @@ def main():
 
                 elif e.button == 4:
                     if moveData["mouseHeld"]:
-                        moveData["tempRelMass"] *= 2 ** (1/3)
+                        if pygame.KMOD_SHIFT & pygame.key.get_mods():
+                            moveData["tempRelMass"] *= 2 ** (2/3)
+                        else:
+                            moveData["tempRelMass"] *= 2 ** (1/3)
                         moveData["tempBody"].setMass(moveData["tempRelMass"] * EARTH_MASS)
                     else:
                         CAMERA.resize(2)
 
                 elif e.button == 5:
                     if moveData["mouseHeld"]:
-                        moveData["tempRelMass"] /= 2 ** (1/3)
+                        if pygame.KMOD_SHIFT & pygame.key.get_mods():
+                            moveData["tempRelMass"] /= 2 ** (2/3)
+                        else:
+                            moveData["tempRelMass"] /= 2 ** (1/3)
                         moveData["tempBody"].setMass(moveData["tempRelMass"] * EARTH_MASS)
                     else:
                         CAMERA.resize(1/2)
@@ -248,7 +254,8 @@ def main():
                         if moveData["currentTime"] - moveData["lastTime"] == 0:
                             print("Oops... zero-division avoided!")
                         else:
-                            distance = UNIVERSE.screenToWorld((endPos - beginPos) / CAMERA.scale)
+                            dampener = 2
+                            distance = UNIVERSE.screenToWorld((endPos - beginPos)) / (CAMERA.scale * dampener)
                             velocity = distance / (moveData["currentTime"] - moveData["lastTime"])
                             tempBody.velocity = velocity
 
