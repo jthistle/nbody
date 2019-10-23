@@ -8,9 +8,14 @@ from pygame.math import Vector2
 from colours import *
 
 
-GRAV_CONST = 6.67430e-11
-EARTH_MASS = int(5.97e24)
-AU = int(150e9)
+class Const:
+    def __init__(self):
+        self.G = 6.67430e-11
+        self.ME = int(5.97e24)
+        self.AU = int(150e9)
+        self.LY = 299792458 * 365.25 * 24 * 60 * 60
+
+CONST = Const()
 
 
 class Body():
@@ -19,27 +24,29 @@ class Body():
         self.setMass(mass)
         self.velocity = Vector2()
 
-        COLOURS = [
-            WHITE,
-            RED,
-            GREEN,
-            BLUE,
-            PURPLE
-        ]
-        self.colour = random.choice(COLOURS)
-
     def setPos(self, pos):
         self.pos = pos
 
     def setMass(self, mass):
         self.mass = mass
         self.getRadius()
+        self.setColour()
 
     def getRadius(self):
         adjustment = 3
         k = 5.565194508027365e-05 * adjustment
         radius = k * (self.mass ** (1/3))
         self.radius = radius
+
+    def setColour(self):
+        minL = 30
+        maxL = 105 - minL
+        maxH = 90
+        logVal = math.log(self.mass) - minL
+
+        h = max(0, min((maxH, maxH - (logVal / maxL) * maxH)))
+        self.colour = pygame.Color(0, 0, 0)
+        self.colour.hsla = (h, 100, 50, 1)
 
     def applyForces(self, dt, bodies):
         """Apply gravitational forces using Newton's law.
@@ -52,7 +59,7 @@ class Body():
                 continue
             distanceVector = body.pos - self.pos
             distance = distanceVector.magnitude()
-            mag = ((GRAV_CONST * body.mass) / (distance ** 2))
+            mag = ((CONST.G * body.mass) / (distance ** 2))
             direction = distanceVector.normalize()
 
             accelVector = mag * direction
@@ -66,8 +73,14 @@ class Body():
 
     def draw(self, surface, camera, universe):
         tempPos = camera.drawPos(universe.worldToScreen(self.pos))
-        radius = max((2, camera.scale * (self.radius / universe.scale)))
-        pygame.draw.circle(surface, self.colour, tempPos, radius, 0)
+        radius = camera.scale * (self.radius / universe.scale)
+        width = 0
+
+        if radius < 2:
+            radius = 2
+            width = 1
+
+        pygame.draw.circle(surface, self.colour, tempPos, radius, width)
 
 
 def drawText(surface, text, font, position, colour, leftAlign = True):
@@ -170,6 +183,20 @@ class Universe:
         return Vector2(worldPos) / self.scale
 
 
+def readableDistance(d):
+    """Returns a human-readable distance given a distance in meters"""
+    if d >= CONST.LY:
+        return "{:.2f}ly".format(d/CONST.LY)
+    elif d >= CONST.AU:
+        return "{:.2f}au".format(d/CONST.AU)
+    elif d >= 10 ** 3:
+        return "{:.2e}km".format(d/(10 ** 3))
+    elif d >= 1:
+        return "{:.2f}m".format(d)
+    else:
+        return "{:.2e}m".format(d)
+
+
 def main():
     pygame.init()
     SCREEN_WIDTH = 1000
@@ -178,7 +205,7 @@ def main():
 
     # Scale in pixels per metre
     # 100 pix = 1 AU
-    UNIVERSE = Universe(AU / 100, 2 ** 23)
+    UNIVERSE = Universe(CONST.AU / 100, 2 ** 23)
 
     CAMERA = Camera(SCREEN_CENTRE)
 
@@ -226,7 +253,7 @@ def main():
                     moveData["currentTime"] = UNIVERSE.totalTime
 
                     # The body's position will be set later before drawing
-                    moveData["tempBody"] = Body(Vector2(), moveData["tempRelMass"] * EARTH_MASS)
+                    moveData["tempBody"] = Body(Vector2(), moveData["tempRelMass"] * CONST.ME)
 
                 elif e.button == 4:
                     if moveData["mouseHeld"]:
@@ -234,7 +261,7 @@ def main():
                             moveData["tempRelMass"] *= 2 ** (2/3)
                         else:
                             moveData["tempRelMass"] *= 2 ** (1/3)
-                        moveData["tempBody"].setMass(moveData["tempRelMass"] * EARTH_MASS)
+                        moveData["tempBody"].setMass(moveData["tempRelMass"] * CONST.ME)
                     else:
                         CAMERA.resize(2)
 
@@ -244,7 +271,7 @@ def main():
                             moveData["tempRelMass"] /= 2 ** (2/3)
                         else:
                             moveData["tempRelMass"] /= 2 ** (1/3)
-                        moveData["tempBody"].setMass(moveData["tempRelMass"] * EARTH_MASS)
+                        moveData["tempBody"].setMass(moveData["tempRelMass"] * CONST.ME)
                     else:
                         CAMERA.resize(1/2)
 
@@ -297,12 +324,12 @@ def main():
         lineY = SCREEN_HEIGHT - 10
         pygame.draw.line(DISPLAY, WHITE, (10, lineY), (110, lineY), 2)
 
-        drawText(DISPLAY, "{}AU".format(UNIVERSE.scale * 100 / (CAMERA.scale * AU)), font, (120, lineY - 10), WHITE)
+        drawText(DISPLAY, readableDistance(UNIVERSE.scale * 100 / CAMERA.scale), font, (120, lineY - 10), WHITE)
 
         # Draw UI
         drawText(DISPLAY, "Time scale: {}x".format(UNIVERSE.timeScale), font, (10, 10), WHITE)
         drawText(DISPLAY, "Time elapsed: {}".format(secondsToTimeString(UNIVERSE.totalTime)), font, (10, 30), WHITE)
-        drawText(DISPLAY, "Camera scale: {}x".format(CAMERA.scale), font, (SCREEN_WIDTH - 10, 10), WHITE, False)
+        # drawText(DISPLAY, "Camera scale: {:.2e}x".format(CAMERA.scale), font, (SCREEN_WIDTH - 10, 10), WHITE, False)
 
         pygame.display.update()
         CLOCK.tick(FPS)
