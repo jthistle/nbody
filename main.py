@@ -10,6 +10,7 @@ from colours import *
 
 GRAV_CONST = 6.67430e-11
 EARTH_MASS = int(5.97e24)
+AU = int(150e9)
 
 
 class Body():
@@ -32,8 +33,13 @@ class Body():
 
     def setMass(self, mass):
         self.mass = mass
-        relSize = self.mass / EARTH_MASS
-        self.radius = int(relSize ** (1/3) * 2)
+        self.getRadius()
+
+    def getRadius(self):
+        adjustment = 3
+        k = 5.565194508027365e-05 * adjustment
+        radius = k * (self.mass ** (1/3))
+        self.radius = radius
 
     def applyForces(self, dt, bodies):
         """Apply gravitational forces using Newton's law.
@@ -60,7 +66,8 @@ class Body():
 
     def draw(self, surface, camera, universe):
         tempPos = camera.drawPos(universe.worldToScreen(self.pos))
-        pygame.draw.circle(surface, self.colour, tempPos, self.radius * camera.scale, 0)
+        radius = max((2, camera.scale * (self.radius / universe.scale)))
+        pygame.draw.circle(surface, self.colour, tempPos, radius, 0)
 
 
 def drawText(surface, text, font, position, colour, leftAlign = True):
@@ -165,13 +172,13 @@ class Universe:
 
 def main():
     pygame.init()
-    SCREEN_WIDTH = 800
-    SCREEN_HEIGHT = 600
+    SCREEN_WIDTH = 1000
+    SCREEN_HEIGHT = 700
     SCREEN_CENTRE = Vector2(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 
     # Scale in pixels per metre
     # 100 pix = 1 AU
-    UNIVERSE = Universe(int(150e7), 2 ** 23)
+    UNIVERSE = Universe(AU / 100, 2 ** 23)
 
     CAMERA = Camera(SCREEN_CENTRE)
 
@@ -287,7 +294,10 @@ def main():
         for body in bodies:
             body.draw(DISPLAY, CAMERA, UNIVERSE)
 
-        # pygame.draw.line(DISPLAY, WHITE, (10, 10), (110, 10), 2)
+        lineY = SCREEN_HEIGHT - 10
+        pygame.draw.line(DISPLAY, WHITE, (10, lineY), (110, lineY), 2)
+
+        drawText(DISPLAY, "{}AU".format(UNIVERSE.scale * 100 / (CAMERA.scale * AU)), font, (120, lineY - 10), WHITE)
 
         # Draw UI
         drawText(DISPLAY, "Time scale: {}x".format(UNIVERSE.timeScale), font, (10, 10), WHITE)
